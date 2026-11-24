@@ -1,0 +1,19 @@
+# Optional: use this if you don't have a local PostgreSQL install.
+# This project was developed and tested against a natively installed
+# PostgreSQL 17 instance (see README.md) — this compose file exists purely
+# for portability on machines without Postgres already available.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: opd_token_engine
+    ports:
+      - '127.0.0.1:5432:5432'   # this machine only; never expose the default password to the network
+    volumes:
+      - opd_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  opd_postgres_data:

@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TokenSource {
+  ONLINE
+  WALK_IN
+  PAID_PRIORITY
+  FOLLOW_UP
+  EMERGENCY
+}
+
+enum TokenStatus {
+  WAITING
+  ALLOCATED
+  CALLED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  REJECTED
+}
+
+enum SlotStatus {
+  OPEN
+  PAUSED
+  CLOSED
+  COMPLETED
+}
+
+enum AllocationEventType {
+  TOKEN_CREATED
+  TOKEN_ALLOCATED
+  TOKEN_REALLOCATED
+  TOKEN_CANCELLED
+  TOKEN_NO_SHOW
+  TOKEN_CALLED
+  TOKEN_STARTED
+  TOKEN_COMPLETED
+  EMERGENCY_INSERTED
+  SLOT_CAPACITY_CHANGED
+  DOCTOR_DELAYED
+  DOCTOR_AVAILABILITY_CHANGED
+  TOKEN_REJECTED
+}
+
+model Doctor {
+  id             String   @id @default(cuid())
+  name           String
+  specialization String
+  active         Boolean  @default(true)
+  delayMinutes   Int      @default(0)
+  delayedAt      DateTime?
+  unavailable    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  slots  OpdSlot[]
+  tokens Token[]
+  events AllocationEvent[]
+
+  @@index([active])
+}
+
+model OpdSlot {
+  id               String     @id @default(cuid())
+  doctorId         String
+  date             DateTime   @db.Date
+  startTime        DateTime
+  endTime          DateTime
+  maximumCapacity  Int
+  emergencyReserve Int        @default(0)
+  paidReserve      Int        @default(0)
+  status           SlotStatus @default(OPEN)
+  createdAt        DateTime   @default(now())
+
+  doctor Doctor  @relation(fields: [doctorId], references: [id])
+  tokens Token[]
+  events AllocationEvent[]
+
+  @@index([doctorId, date])
+  @@index([status])
+}
+
+model Patient {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  createdAt DateTime @default(now())
+
+  tokens Token[]
+}
+
+model Token {
+  id                   String      @id @default(cuid())
+  patientId            String
+  doctorId             String
+  slotId               String
+  tokenNumber          String
+  source               TokenSource
+  status               TokenStatus @default(WAITING)
+  priorityScoreAtIntake Int
+  preferredDoctorId    String?
+  displacedFromTokenId String?
+
+  requestedAt  DateTime  @default(now())
+  allocatedAt  DateTime?
+  calledAt     DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  noShowAt     DateTime?
+
+  metadata Json?
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+  slot    OpdSlot @relation(fields: [slotId], references: [id])
+  events  AllocationEvent[]
+
+  @@unique([slotId, tokenNumber])
+  @@index([slotId, status])
+  @@index([doctorId, status])
+  @@index([status])
+}
+
+model AllocationEvent {
+  id        String              @id @default(cuid())
+  type      AllocationEventType
+  tokenId   String?
+  slotId    String?
+  doctorId  String?
+  reason    String
+  payload   Json
+  createdAt DateTime            @default(now())
+
+  token  Token?  @relation(fields: [tokenId], references: [id])
+  slot   OpdSlot? @relation(fields: [slotId], references: [id])
+  doctor Doctor?  @relation(fields: [doctorId], references: [id])
+
+  @@index([tokenId])
+  @@index([slotId])
+  @@index([createdAt])
+}

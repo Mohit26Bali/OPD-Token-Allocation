@@ -1,0 +1,17 @@
+{
+  "name": "opd-token-engine",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "backend",
+    "simulation",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w backend",
+    "test": "npm run test -w backend",
+    "migrate": "npm run migrate -w backend",
+    "seed": "npm run seed -w backend",
+    "simulate": "npm run simulate -w simulation"
+  }
+}
